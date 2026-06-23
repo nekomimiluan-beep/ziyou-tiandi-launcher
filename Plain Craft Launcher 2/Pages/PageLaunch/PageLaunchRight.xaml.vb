@@ -114,7 +114,7 @@ Public Class PageLaunchRight
                 Logger.Info("主页自定义数据来源：联网缓存文件")
                 Content = FileUtils.TryReadAsString(PathTemp & "Cache\Custom.xaml")
                 '后台更新缓存
-                OnlineLoader.Start((Url, False))
+                OnlineLoader.Start((Url, True))
             Else
                 '缓存不可用
                 Logger.Info("主页自定义数据来源：联网全新下载")
@@ -167,7 +167,7 @@ Public Class PageLaunchRight
                 Logger.Info($"无法检查联网主页版本，将直接下载，检查源：{VersionAddress}")
             End Try
             '实际下载
-            Dim FileContent As String = NetRequestByClientRetry(Address)
+            Dim FileContent As String = DownloadRemoteHomepageContent(Address)
             Logger.Info($"已联网下载主页，内容长度：{FileContent.Length}，来源：{Address}")
             Settings.Set("CacheSavedPageUrl", Address)
             Settings.Set("CacheSavedPageVersion", Version)
@@ -296,7 +296,13 @@ Public Class PageLaunchRight
 
     Private Function DownloadRemoteHomepageContent(Url As String) As String
         If Not Url.StartsWithF("http://") AndAlso Not Url.StartsWithF("https://") Then Throw New Exception("远程主页片段地址不是 HTTP 链接")
-        Dim Result = NetRequestByClientRetry(Url, RequireJson:=False, Encoding:=Encoding.UTF8, SimulateBrowserHeaders:=True)
+        Dim Headers As String(,) = {
+            {"Cache-Control", "no-cache, no-store, must-revalidate"},
+            {"Pragma", "no-cache"},
+            {"Expires", "0"}
+        }
+        Dim FreshUrl = Url & If(Url.Contains("?"), "&", "?") & "_pcl_refresh=" & Date.Now.Ticks
+        Dim Result = NetRequestByClientRetry(FreshUrl, RequireJson:=False, Encoding:=Encoding.UTF8, SimulateBrowserHeaders:=True, Headers:=Headers)
         If String.IsNullOrWhiteSpace(Result) Then Throw New Exception("远程主页为空")
         Result = Result.Trim().TrimStart(ChrW(&HFEFF))
         Return Result
