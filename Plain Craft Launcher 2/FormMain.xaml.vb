@@ -1052,6 +1052,7 @@ Public Class FormMain
                 Left -= 10000
                 ShowInTaskbar = False
                 Visibility = Visibility.Hidden
+                FrmLaunchRight?.RefreshHomepageMediaPlayback()
                 Logger.Info($"窗口已隐藏，位置：({Left},{Top})")
             Else
                 '取消隐藏
@@ -1071,6 +1072,7 @@ Public Class FormMain
             ShowInTaskbar = True
             WindowState = WindowState.Normal
             Hidden = False
+            FrmLaunchRight?.RefreshHomepageMediaPlayback()
             Topmost = True '偶尔 SetForegroundWindow 失效
             Topmost = False
             SetForegroundWindow(Handle)

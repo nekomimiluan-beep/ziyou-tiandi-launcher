@@ -321,6 +321,7 @@ Public Class PageLaunchRight
                 LoadedContentHash = Hash
                 '实际加载内容
                 PanCustom.Children.Clear()
+                HomepageMediaElements.Clear()
                 If String.IsNullOrWhiteSpace(Content) Then
                     Logger.Info($"实例化：清空主页 UI，来源为空")
                     Return
@@ -336,6 +337,7 @@ Public Class PageLaunchRight
                 Dim LoadedElement = GetObjectFromXML(Content)
                 SetupHomepageMediaLoop(LoadedElement)
                 PanCustom.Children.Add(LoadedElement)
+                RefreshHomepageMediaPlayback()
                 '加载计时
                 Dim LoadCostTime = (Date.Now - LoadStartTime).Milliseconds
                 Logger.Info($"实例化：加载主页 UI 完成，耗时 {LoadCostTime}ms")
@@ -370,15 +372,18 @@ Public Class PageLaunchRight
 
     Private LoadedContentHash As ULong? = Nothing
     Private LoadContentLock As New Object
+    Private ReadOnly HomepageMediaElements As New List(Of MediaElement)
 
     Private Sub SetupHomepageMediaLoop(Element As Object)
         Dim Target = TryCast(Element, DependencyObject)
         If Target Is Nothing Then Return
         If TypeOf Target Is MediaElement Then
             Dim Media = CType(Target, MediaElement)
+            If Not HomepageMediaElements.Contains(Media) Then HomepageMediaElements.Add(Media)
             AddHandler Media.MediaEnded,
                 Sub()
                     Try
+                        If FrmMain IsNot Nothing AndAlso FrmMain.Hidden Then Return
                         Media.Position = TimeSpan.Zero
                         Media.Play()
                     Catch ex As Exception
@@ -390,6 +395,25 @@ Public Class PageLaunchRight
         For i = 0 To ChildrenCount - 1
             SetupHomepageMediaLoop(VisualTreeHelper.GetChild(Target, i))
         Next
+    End Sub
+    Public Sub RefreshHomepageMediaPlayback()
+        Try
+            Dim ShouldPause = FrmMain IsNot Nothing AndAlso FrmMain.Hidden
+            For Each MediaItem In HomepageMediaElements.ToList()
+                If MediaItem Is Nothing Then Continue For
+                Try
+                    If ShouldPause Then
+                        MediaItem.Pause()
+                    Else
+                        MediaItem.Play()
+                    End If
+                Catch ex As Exception
+                    Logger.Warn(ex, "切换主页视频播放状态失败")
+                End Try
+            Next
+        Catch ex As Exception
+            Logger.Warn(ex, "刷新主页视频播放状态失败")
+        End Try
     End Sub
 
 #End Region
