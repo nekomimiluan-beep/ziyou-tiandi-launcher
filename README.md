@@ -1,3 +1,16 @@
+# 自由天地启动器
+
+本仓库基于 [Plain Craft Launcher 2 / PCL](https://github.com/Meloong-Git/PCL) 开源代码改造。
+
+主要改动：
+- 内置自由天地专用配置与独立启动器标识。
+- 在游戏启动流程中加入第三方服务器补丁更新逻辑。
+- 更新源读取 `version.txt`，补丁文件从蓝奏云文件夹解析并下载。
+- 补丁按版本号升序安装，支持 `update.json` 清单、文件校验、删除项、回滚与 ZipSlip 防护。
+- 自定义主页支持远程 `Custom.xaml`，失败时回退本地页面。
+
+---
+
 # Plain Craft Launcher
 
 [![Stars](https://img.shields.io/github/stars/Meloong-Git/PCL?style=flat&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHBhdGggZD0iTTggLjI1YS43NS43NSAwIDAgMSAuNjczLjQxOGwxLjg4MiAzLjgxNSA0LjIxLjYxMmEuNzUuNzUgMCAwIDEgLjQxNiAxLjI3OWwtMy4wNDYgMi45Ny43MTkgNC4xOTJhLjc1MS43NTEgMCAwIDEtMS4wODguNzkxTDggMTIuMzQ3bC0zLjc2NiAxLjk4YS43NS43NSAwIDAgMS0xLjA4OC0uNzlsLjcyLTQuMTk0TC44MTggNi4zNzRhLjc1Ljc1IDAgMCAxIC40MTYtMS4yOGw0LjIxLS42MTFMNy4zMjcuNjY4QS43NS43NSAwIDAgMSA4IC4yNVoiIGZpbGw9IiNlYWM1NGYiLz48L3N2Zz4=&logoSize=auto&label=Stars&labelColor=444444&color=eac54f)](https://github.com/Meloong-Git/PCL/)
