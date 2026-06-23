@@ -69,6 +69,7 @@ Friend Module ModSecret
         Try
             If ThemeNow = NewTheme AndAlso NewTheme >= 0 Then Return
             If NewTheme >= 0 Then ThemeNow = NewTheme
+            ApplyLauncherThemeValues()
 
             Color1 = New MyColor().FromHSL2(ColorHue, ColorSat * 0.2, 25 + ColorLightAdjust * 0.3)
             Color2 = New MyColor().FromHSL2(ColorHue, ColorSat, 45 + ColorLightAdjust)
@@ -107,6 +108,45 @@ Friend Module ModSecret
             Logger.Error(ex, "刷新主题颜色失败", LogBehavior.Toast)
         End Try
     End Sub
+    Private Sub ApplyLauncherThemeValues()
+        Select Case ThemeNow
+            Case 0 '龙猫蓝
+                ColorHue = 210 : ColorSat = 85 : ColorLightAdjust = 0 : ColorHueTopbarDelta = 0
+            Case 1 '甜柠青
+                ColorHue = 180 : ColorSat = 65 : ColorLightAdjust = -2 : ColorHueTopbarDelta = 12
+            Case 2 '小草绿
+                ColorHue = 135 : ColorSat = 62 : ColorLightAdjust = -2 : ColorHueTopbarDelta = 10
+            Case 3 '菠萝黄
+                ColorHue = 48 : ColorSat = 86 : ColorLightAdjust = -6 : ColorHueTopbarDelta = 8
+            Case 4 '橡木棕
+                ColorHue = 32 : ColorSat = 62 : ColorLightAdjust = -10 : ColorHueTopbarDelta = 6
+            Case 5 '玄素黑
+                ColorHue = 220 : ColorSat = 18 : ColorLightAdjust = -24 : ColorHueTopbarDelta = 0
+            Case 6 '铁杆粉
+                ColorHue = 334 : ColorSat = 74 : ColorLightAdjust = 0 : ColorHueTopbarDelta = 10
+            Case 7 '神秘紫
+                ColorHue = 272 : ColorSat = 72 : ColorLightAdjust = -2 : ColorHueTopbarDelta = 12
+            Case 8 '秋仪金
+                ColorHue = 42 : ColorSat = 78 : ColorLightAdjust = -4 : ColorHueTopbarDelta = 14
+            Case 9 '活跃橙
+                ColorHue = 24 : ColorSat = 84 : ColorLightAdjust = -2 : ColorHueTopbarDelta = 12
+            Case 10 '跳票红
+                ColorHue = 358 : ColorSat = 78 : ColorLightAdjust = -2 : ColorHueTopbarDelta = 10
+            Case 11 '极客蓝
+                ColorHue = 198 : ColorSat = 88 : ColorLightAdjust = -3 : ColorHueTopbarDelta = 18
+            Case 12 '滑稽彩
+                ColorHue = 56 : ColorSat = 92 : ColorLightAdjust = 0 : ColorHueTopbarDelta = New Integer() {-45, 0, 55}
+            Case 13 '欧皇彩
+                ColorHue = 292 : ColorSat = 78 : ColorLightAdjust = 2 : ColorHueTopbarDelta = New Integer() {-70, 0, 72}
+            Case 14 '自定义
+                ColorHue = Settings.Get(Of Integer)("UiLauncherHue")
+                ColorSat = Settings.Get(Of Integer)("UiLauncherSat")
+                ColorLightAdjust = Settings.Get(Of Integer)("UiLauncherLight") - 20
+                ColorHueTopbarDelta = Settings.Get(Of Integer)("UiLauncherDelta")
+            Case Else
+                ColorHue = 210 : ColorSat = 85 : ColorLightAdjust = 0 : ColorHueTopbarDelta = 0
+        End Select
+    End Sub
     Public Sub ThemeRefreshMain()
         RunInUi(
         Sub()
@@ -133,6 +173,8 @@ Friend Module ModSecret
         End Sub)
     End Sub
     Friend Sub ThemeCheckAll(EffectSetup As Boolean)
+        Settings.Set("UiLauncherThemeHide", "0|1|2|3|4|5|6|7|8|9|10|11|12|13|14")
+        Settings.Set("UiLauncherThemeHide2", "0|1|2|3|4|5|6|7|8|9|10|11|12|13|14")
     End Sub
     Friend Function ThemeCheckOne(Id As Integer) As Boolean
         Return True

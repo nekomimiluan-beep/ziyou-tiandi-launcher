@@ -4,6 +4,7 @@
         '重复加载部分
         PanBack.ScrollToHome()
         ThemeCheckAll(True)
+        UnlockAllLauncherThemes()
         If ThemeDontClick <> 0 Then
             Dim NewText As String = Nothing
             Select Case ThemeDontClick
@@ -28,7 +29,7 @@
 
         SliderLoad()
 
-        If BuildType = BuildTypes.Release Then PanLauncherHide.Visibility = Visibility.Visible
+        PanLauncherHide.Visibility = Visibility.Collapsed
 
         '设置解锁
         If Not RadioLauncherTheme8.IsEnabled Then LabLauncherTheme8Copy.ToolTip = $"累积赞助达到 ¥23.33 后，在爱发电私信发送【土豆 {Identify}】以解锁。" & vbCrLf & "右键打开赞助页面，如果觉得 PCL 做得还不错就支持一下吧 =w=！"
@@ -37,6 +38,18 @@
         RadioLauncherTheme9.ToolTip = "· 反馈一个 Bug，在标记为 [完成] 后回复识别码要求解锁" & vbCrLf & "· 提交一个 Pull Request 或主页预设，在标记为 [完成] 后回复识别码要求解锁"
         '极客蓝的处理在 ThemeCheck 中
 
+    End Sub
+    Private Sub UnlockAllLauncherThemes()
+        For Each Control In {RadioLauncherTheme5, RadioLauncherTheme6, RadioLauncherTheme7, RadioLauncherTheme8, RadioLauncherTheme9, RadioLauncherTheme10, RadioLauncherTheme11, RadioLauncherTheme12, RadioLauncherTheme13, RadioLauncherTheme14}
+            Control.IsEnabled = True
+        Next
+        RadioLauncherTheme5.Opacity = 1
+        RadioLauncherTheme5Gray.Visibility = Visibility.Collapsed
+        LabLauncherTheme5Unlock.Visibility = Visibility.Collapsed
+        LabLauncherTheme8Copy.Visibility = Visibility.Collapsed
+        LabLauncherTheme9Copy.Visibility = Visibility.Collapsed
+        LabLauncherTheme11Click.Visibility = Visibility.Collapsed
+        PanLauncherHide.Visibility = Visibility.Collapsed
     End Sub
     Public Sub Refresh()
         Try
