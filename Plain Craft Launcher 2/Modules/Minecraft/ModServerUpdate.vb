@@ -310,7 +310,8 @@ Public Module ModServerUpdate
     End Function
 
     Private Function LanzouGetFolderFiles(FolderUrl As String, Password As String) As List(Of LanzouFileEntry)
-        Dim Page = NetRequestByClientRetry(FolderUrl, SimulateBrowserHeaders:=True)
+        Dim Cookies As New CookieContainer
+        Dim Page = LanzouGetText(FolderUrl, Nothing, Cookies)
         Dim FileId = RegexGroup(Page, "filemoreajax\.php\?file=(\d+)")
         If FileId Is Nothing Then Throw New Exception("$解析蓝奏云文件夹失败：未找到 filemoreajax.php。")
 
@@ -331,14 +332,11 @@ Public Module ModServerUpdate
         Dim PageIndex = 1
         Do
             PostData("pg") = PageIndex.ToString(CultureInfo.InvariantCulture)
-            Dim JsonText = NetRequestByClientRetry(
+            Dim JsonText = LanzouPostNoRedirect(
                 New Uri(New Uri(FolderUrl), "/filemoreajax.php?file=" & FileId).ToString,
-                HttpMethod.Post,
-                Content:=New FormUrlEncodedContent(PostData),
-                ContentType:=Nothing,
-                Headers:={{"Referer", FolderUrl}, {"Origin", New Uri(FolderUrl).GetLeftPart(UriPartial.Authority)}},
-                RequireJson:=True,
-                SimulateBrowserHeaders:=True)
+                FolderUrl,
+                Cookies,
+                New FormUrlEncodedContent(PostData))
             Dim Json = GetJson(JsonText)
             Dim State = Json("zt")?.ToString()
             If State = "2" Then Exit Do
@@ -375,11 +373,12 @@ Public Module ModServerUpdate
 
     Private Function LanzouResolveDownloadUrl(FileId As String) As String
         Dim FilePageUrl = "https://lanzout.com/" & FileId
-        Dim Page = NetRequestByClientRetry(FilePageUrl, SimulateBrowserHeaders:=True)
-        Dim IframeSrc = RegexGroup(Page, "<iframe[^>]+src=""([^""]+)""")
+        Dim Cookies As New CookieContainer
+        Dim Page = LanzouGetText(FilePageUrl, Nothing, Cookies)
+        Dim IframeSrc = RegexGroup(Page, "<iframe\b[^>]*?\ssrc\s*=\s*[""']([^""']+)[""']", Options:=RegexOptions.IgnoreCase Or RegexOptions.Singleline)
         If IframeSrc Is Nothing Then Throw New Exception("$解析蓝奏云文件页失败：未找到 iframe。")
         Dim IframeUrl = New Uri(New Uri(FilePageUrl), IframeSrc).ToString
-        Dim Iframe = NetRequestByClientRetry(IframeUrl, Headers:={{"Referer", FilePageUrl}}, SimulateBrowserHeaders:=True)
+        Dim Iframe = LanzouGetText(IframeUrl, FilePageUrl, Cookies)
 
         Dim AjaxFile = RegexGroup(Iframe, "ajaxm\.php\?file=(\d+)")
         Dim Sign = RegexGroup(Iframe, "wp_sign\s*=\s*'([^']+)'")
@@ -388,12 +387,12 @@ Public Module ModServerUpdate
         Dim TelecomSuffix = If(RegexGroup(Iframe, "var\s+down_1\s*=\s*'([^']*)'"), "")
         If AjaxFile Is Nothing OrElse Sign Is Nothing OrElse AjaxData Is Nothing Then Throw New Exception("$解析蓝奏云下载参数失败。")
 
-        Dim RealUrl = LanzouGetTelecomDownloadUrl(AjaxFile, Sign, AjaxData, Kdns, TelecomSuffix, IframeUrl)
+        Dim RealUrl = LanzouGetTelecomDownloadUrl(AjaxFile, Sign, AjaxData, Kdns, TelecomSuffix, IframeUrl, Cookies)
         If String.IsNullOrWhiteSpace(RealUrl) Then Throw New Exception("$蓝奏云未返回真实下载地址。")
         Return RealUrl
     End Function
 
-    Private Function LanzouGetTelecomDownloadUrl(AjaxFile As String, Sign As String, AjaxData As String, Kdns As String, TelecomSuffix As String, Referer As String) As String
+    Private Function LanzouGetTelecomDownloadUrl(AjaxFile As String, Sign As String, AjaxData As String, Kdns As String, TelecomSuffix As String, Referer As String, Cookies As CookieContainer) As String
         Dim PostData = New Dictionary(Of String, String) From {
             {"action", "downprocess"},
             {"websignkey", AjaxData},
@@ -403,13 +402,11 @@ Public Module ModServerUpdate
             {"kd", Kdns},
             {"ves", "1"}
         }
-        Dim JsonText = NetRequestByClientRetry(
+        Dim JsonText = LanzouPostNoRedirect(
             New Uri(New Uri(Referer), "/ajaxm.php?file=" & AjaxFile).ToString,
-            HttpMethod.Post,
-            Content:=New FormUrlEncodedContent(PostData),
-            Headers:={{"Referer", Referer}, {"Origin", New Uri(Referer).GetLeftPart(UriPartial.Authority)}, {"X-Requested-With", "XMLHttpRequest"}},
-            RequireJson:=True,
-            SimulateBrowserHeaders:=True)
+            Referer,
+            Cookies,
+            New FormUrlEncodedContent(PostData))
         Dim Json = GetJson(JsonText)
         If Json("zt")?.ToString() <> "1" Then Throw New Exception("$蓝奏云 downprocess 失败：" & JsonText)
 
@@ -421,6 +418,40 @@ Public Module ModServerUpdate
 
         Dim TelecomUrl = Dom.TrimEnd("/"c) & "/file/" & Url & TelecomSuffix
         Return LanzouResolveTelecomFinalUrl(TelecomUrl)
+    End Function
+
+    Private Function LanzouGetText(Url As String, Referer As String, Cookies As CookieContainer) As String
+        If Cookies Is Nothing Then Cookies = New CookieContainer
+        For Attempt = 1 To 3
+            Using Handler As New HttpClientHandler With {
+                .AllowAutoRedirect = True,
+                .AutomaticDecompression = DecompressionMethods.Deflate Or DecompressionMethods.GZip,
+                .CookieContainer = Cookies
+            }
+                Using Client As New HttpClient(Handler)
+                    Client.Timeout = TimeSpan.FromSeconds(30)
+                    Using Request As New HttpRequestMessage(HttpMethod.Get, Url)
+                        Request.Headers.TryAddWithoutValidation("User-Agent", $"PCL2/{VersionBaseName}.{CInt(BuildType)} Mozilla/5.0 AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36")
+                        Request.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                        Request.Headers.TryAddWithoutValidation("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                        Request.Headers.TryAddWithoutValidation("Cache-Control", "no-cache")
+                        Request.Headers.TryAddWithoutValidation("Pragma", "no-cache")
+                        If Not String.IsNullOrWhiteSpace(Referer) Then Request.Headers.TryAddWithoutValidation("Referer", Referer)
+                        Using Response = Client.SendAsync(Request, HttpCompletionOption.ResponseContentRead).GetAwaiter().GetResult()
+                            Dim Text = Response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+                            If Not Response.IsSuccessStatusCode Then Throw New Exception($"蓝奏云请求失败：HTTP {CInt(Response.StatusCode)}，{Url}")
+                            If Text.Contains("var arg1=") Then
+                                Cookies.Add(New Uri(Url), New Cookie("acw_sc__v2", ComputeAcwScV2(Text), "/"))
+                                Thread.Sleep(200)
+                                Continue For
+                            End If
+                            Return Text
+                        End Using
+                    End Using
+                End Using
+            End Using
+        Next
+        Throw New Exception("蓝奏云验证失败，无法获取页面。")
     End Function
 
     Private Class LanzouHttpResult
