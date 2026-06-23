@@ -55,11 +55,11 @@ Public Module ModBase
     ''' <summary>
     ''' 程序的缓存文件夹路径，以 \ 结尾。
     ''' </summary>
-    Public PathTemp As String = If(Settings.Get(Of String)("SystemSystemCache") = "", Path.GetTempPath() & "PCL\", Settings.Get(Of String)("SystemSystemCache")).ToString.Replace("/", "\").TrimEnd("\") & "\"
+    Public PathTemp As String = If(Settings.Get(Of String)("SystemSystemCache") = "", Path.GetTempPath() & "ZiyouTiandiLauncher\", Settings.Get(Of String)("SystemSystemCache")).ToString.Replace("/", "\").TrimEnd("\") & "\"
     ''' <summary>
     ''' AppData 中的 PCL 文件夹路径，以 \ 结尾。
     ''' </summary>
-    Public PathAppdata As String = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) & "\PCL\"
+    Public PathAppdata As String = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) & "\ZiyouTiandiLauncher\"
     ''' <summary>
     ''' 当前程序的语言。
     ''' </summary>
@@ -1435,7 +1435,7 @@ Public Module ModBase
             '类型检查
             Using Reader As New XamlXmlReader(Stream)
                 While Reader.Read()
-                    For Each BlackListType In {GetType(WebBrowser), GetType(Frame), GetType(MediaElement), GetType(ObjectDataProvider), GetType(XamlReader), GetType(Window), GetType(XmlDataProvider), GetType(SettingService)}
+                    For Each BlackListType In {GetType(WebBrowser), GetType(Frame), GetType(ObjectDataProvider), GetType(XamlReader), GetType(Window), GetType(XmlDataProvider), GetType(SettingService)}
                         If Reader.Type IsNot Nothing AndAlso BlackListType.IsAssignableFrom(Reader.Type.UnderlyingType) Then Throw New UnauthorizedAccessException($"基于安全考虑，不允许使用 {BlackListType.Name} 类型。")
                         If Reader.Value IsNot Nothing AndAlso Reader.Value = BlackListType.Name Then Throw New UnauthorizedAccessException($"基于安全考虑，不允许使用 {BlackListType.Name} 值。")
                     Next

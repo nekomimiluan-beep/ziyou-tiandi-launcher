@@ -8,10 +8,10 @@ Imports System.Runtime.InteropServices
 
 '查看程序集特性的值
 
-<Assembly: AssemblyTitle("Plain Craft Launcher 启动器")>
-<Assembly: AssemblyDescription("Minecraft 启动器 (制作：龙腾猫跃)")>
+<Assembly: AssemblyTitle("自由天地启动器")>
+<Assembly: AssemblyDescription("自由天地 Minecraft 启动器")>
 <Assembly: AssemblyCompany("")>
-<Assembly: AssemblyProduct("Plain Craft Launcher")>
+<Assembly: AssemblyProduct("自由天地启动器")>
 <Assembly: AssemblyCopyright("Copyright © 龙腾猫跃 2016. All Rights Reserved.")>
 <Assembly: AssemblyConfiguration("PCL2 Config Mark")>
 <Assembly: ComVisible(False)>

@@ -125,6 +125,9 @@ Public Class PageLaunchRight
                 Return
             End If
         End If
+        Content = ReplaceRemoteHomepagePage(Content)
+        Content = ReplaceRemoteHomepageFragments(Content)
+        Content = ReplaceServerUpdateHomepageArguments(Content)
         '同步到 UI
         RunInUi(Sub() LoadContent(Content))
     End Sub
@@ -203,6 +206,102 @@ Public Class PageLaunchRight
         Logger.Info("已清空主页缓存")
     End Sub
 
+    Private Function ReplaceServerUpdateHomepageArguments(Content As String) As String
+        If String.IsNullOrEmpty(Content) Then Return Content
+        If Not (Content.Contains("{online_version}") OrElse Content.Contains("{latest_version}") OrElse
+                Content.Contains("{onlinexxx}") OrElse Content.Contains("{latestxxx}") OrElse
+                Content.Contains("onlinexxx") OrElse Content.Contains("latestxxx")) Then Return Content
+
+        Dim LocalVersion As String
+        Try
+            LocalVersion = ServerUpdateGetLocalVersionText()
+        Catch ex As Exception
+            Logger.Warn(ex, "读取主页本地服务器版本失败")
+            LocalVersion = "读取失败"
+        End Try
+
+        Dim LiveVersion As String
+        Try
+            LiveVersion = ServerUpdateGetLiveVersionText()
+        Catch ex As Exception
+            Logger.Warn(ex, "读取主页在线服务器版本失败")
+            LiveVersion = "读取失败"
+        End Try
+
+        LocalVersion = EscapeUtils.XmlEscape(LocalVersion)
+        LiveVersion = EscapeUtils.XmlEscape(LiveVersion)
+        Return Content.
+            Replace("{online_version}", LocalVersion).
+            Replace("{latest_version}", LiveVersion).
+            Replace("{onlinexxx}", LocalVersion).
+            Replace("{latestxxx}", LiveVersion).
+            Replace("onlinexxx", LocalVersion).
+            Replace("latestxxx", LiveVersion)
+    End Function
+
+    Private Function ReplaceRemoteHomepageFragments(Content As String) As String
+        If String.IsNullOrEmpty(Content) OrElse Not Content.Contains("RemoteXaml") AndAlso Not Content.Contains("{remote_xaml:") Then Return Content
+
+        Content = Text.RegularExpressions.Regex.Replace(Content,
+            "<!--\s*RemoteXaml\s*:\s*(.*?)\s*-->(.*?)<!--\s*/RemoteXaml\s*-->",
+            Function(Match)
+                Dim Url = Match.Groups(1).Value.Trim()
+                Dim Fallback = Match.Groups(2).Value
+                Try
+                    Return DownloadRemoteHomepageFragment(Url)
+                Catch ex As Exception
+                    Logger.Warn(ex, "下载远程主页片段失败：" & Url)
+                    Return Fallback
+                End Try
+            End Function,
+            Text.RegularExpressions.RegexOptions.IgnoreCase Or Text.RegularExpressions.RegexOptions.Singleline)
+
+        Content = Text.RegularExpressions.Regex.Replace(Content,
+            "\{remote_xaml:([^}]+)\}",
+            Function(Match)
+                Dim Url = Match.Groups(1).Value.Trim()
+                Try
+                    Return DownloadRemoteHomepageFragment(Url)
+                Catch ex As Exception
+                    Logger.Warn(ex, "下载远程主页片段失败：" & Url)
+                    Return ""
+                End Try
+            End Function,
+            Text.RegularExpressions.RegexOptions.IgnoreCase)
+
+        Return Content
+    End Function
+
+    Private Function ReplaceRemoteHomepagePage(Content As String) As String
+        If String.IsNullOrEmpty(Content) OrElse Not Content.Contains("RemotePage") Then Return Content
+        Dim Match = Text.RegularExpressions.Regex.Match(Content, "<!--\s*RemotePage\s*:\s*(.*?)\s*-->", Text.RegularExpressions.RegexOptions.IgnoreCase)
+        If Not Match.Success Then Return Content
+        Dim Url = Match.Groups(1).Value.Trim()
+        Try
+            Return DownloadRemoteHomepageContent(Url)
+        Catch ex As Exception
+            Logger.Warn(ex, "下载远程主页失败：" & Url)
+            Return Content
+        End Try
+    End Function
+
+    Private Function DownloadRemoteHomepageFragment(Url As String) As String
+        Dim Result = DownloadRemoteHomepageContent(Url)
+        If Result.Contains("<Grid") AndAlso Result.Contains("<local:MyCard") Then
+            Dim Card = Text.RegularExpressions.Regex.Match(Result, "<local:MyCard\b[\s\S]*?</local:MyCard>", Text.RegularExpressions.RegexOptions.IgnoreCase)
+            If Card.Success Then Return Card.Value
+        End If
+        Return Result
+    End Function
+
+    Private Function DownloadRemoteHomepageContent(Url As String) As String
+        If Not Url.StartsWithF("http://") AndAlso Not Url.StartsWithF("https://") Then Throw New Exception("远程主页片段地址不是 HTTP 链接")
+        Dim Result = NetRequestByClientRetry(Url, RequireJson:=False, Encoding:=Encoding.UTF8, SimulateBrowserHeaders:=True)
+        If String.IsNullOrWhiteSpace(Result) Then Throw New Exception("远程主页为空")
+        Result = Result.Trim().TrimStart(ChrW(&HFEFF))
+        Return Result
+    End Function
+
     ''' <summary>
     ''' 从文本内容中加载主页。
     ''' 必须在 UI 线程调用。
@@ -228,7 +327,9 @@ Public Class PageLaunchRight
                 Loop
                 Content = "<StackPanel xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation"" xmlns:sys=""clr-namespace:System;assembly=mscorlib"" xmlns:x=""http://schemas.microsoft.com/winfx/2006/xaml"" xmlns:local=""clr-namespace:PCL;assembly=Plain Craft Launcher 2"" xmlns:core=""clr-namespace:MeloongCore;assembly=MeloongCore"" xmlns:corewpf=""clr-namespace:MeloongCore.Wpf;assembly=MeloongCore.Wpf"">" & Content & "</StackPanel>"
                 Logger.Info($"实例化：加载主页 UI 开始，最终内容长度：{Content.Count}")
-                PanCustom.Children.Add(GetObjectFromXML(Content))
+                Dim LoadedElement = GetObjectFromXML(Content)
+                SetupHomepageMediaLoop(LoadedElement)
+                PanCustom.Children.Add(LoadedElement)
                 '加载计时
                 Dim LoadCostTime = (Date.Now - LoadStartTime).Milliseconds
                 Logger.Info($"实例化：加载主页 UI 完成，耗时 {LoadCostTime}ms")
@@ -263,6 +364,27 @@ Public Class PageLaunchRight
 
     Private LoadedContentHash As ULong? = Nothing
     Private LoadContentLock As New Object
+
+    Private Sub SetupHomepageMediaLoop(Element As Object)
+        Dim Target = TryCast(Element, DependencyObject)
+        If Target Is Nothing Then Return
+        If TypeOf Target Is MediaElement Then
+            Dim Media = CType(Target, MediaElement)
+            AddHandler Media.MediaEnded,
+                Sub()
+                    Try
+                        Media.Position = TimeSpan.Zero
+                        Media.Play()
+                    Catch ex As Exception
+                        Logger.Warn(ex, "循环播放主页视频失败")
+                    End Try
+                End Sub
+        End If
+        Dim ChildrenCount = VisualTreeHelper.GetChildrenCount(Target)
+        For i = 0 To ChildrenCount - 1
+            SetupHomepageMediaLoop(VisualTreeHelper.GetChild(Target, i))
+        Next
+    End Sub
 
 #End Region
 

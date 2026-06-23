@@ -80,12 +80,12 @@ RetryCacheCheck:
                 DirectoryUtils.Create(PathTemp)
                 CheckPermissionWithException(PathTemp)
             Catch ex As Exception
-                If PathTemp = Path.GetTempPath() & "PCL\" Then
-                    MyMsgBox("PCL 无法访问缓存文件夹，可能导致程序出错或无法正常使用！" & vbCrLf & vbCrLf & "错误原因：" & ex.GetDisplay(True), "缓存文件夹不可用")
+                If PathTemp = Path.GetTempPath() & "ZiyouTiandiLauncher\" Then
+                    MyMsgBox("自由天地启动器无法访问缓存文件夹，可能导致程序出错或无法正常使用！" & vbCrLf & vbCrLf & "错误原因：" & ex.GetDisplay(True), "缓存文件夹不可用")
                 Else
-                    MyMsgBox("手动设置的缓存文件夹不可用，PCL 将使用默认缓存文件夹。" & vbCrLf & vbCrLf & "错误原因：" & ex.GetDisplay(True), "缓存文件夹不可用")
+                    MyMsgBox("手动设置的缓存文件夹不可用，自由天地启动器将使用默认缓存文件夹。" & vbCrLf & vbCrLf & "错误原因：" & ex.GetDisplay(True), "缓存文件夹不可用")
                     Settings.Set("SystemSystemCache", "")
-                    PathTemp = Path.GetTempPath() & "PCL\"
+                    PathTemp = Path.GetTempPath() & "ZiyouTiandiLauncher\"
                     GoTo RetryCacheCheck
                 End If
             End Try
@@ -155,9 +155,9 @@ RetryCacheCheck:
         If BuildType = BuildTypes.Debug Then Return
         Try
             Dim MutexCreatedNew As Boolean
-            PclMutex = New Mutex(True, "PCL_SingletonMutex", MutexCreatedNew)
+            PclMutex = New Mutex(True, "ZiyouTiandiLauncher_SingletonMutex", MutexCreatedNew)
             If MutexCreatedNew Then Return
-            Logger.Warn("已有一个 PCL 实例正在运行")
+            Logger.Warn("已有一个自由天地启动器实例正在运行")
             '等待已有的 PCL 退出
             If e.Args.Length > 0 AndAlso e.Args(0) = "--wait" Then
                 Try
@@ -167,8 +167,7 @@ RetryCacheCheck:
                 End Try
             End If
             '将已有的 PCL 窗口拖出来
-            Dim WindowHwnd As IntPtr = FindWindow(Nothing, "Plain Craft Launcher　")
-            If WindowHwnd = IntPtr.Zero Then WindowHwnd = FindWindow(Nothing, "Plain Craft Launcher 2　")
+            Dim WindowHwnd As IntPtr = FindWindow(Nothing, "自由天地启动器　")
             If WindowHwnd <> IntPtr.Zero Then ShowWindowToTop(WindowHwnd)
             '播放提示音并退出
             Beep()
