@@ -2313,7 +2313,10 @@ IgnoreCustomSkin:
             Case 4
                 '最小化
                 McLaunchLog("已根据设置，在启动后最小化启动器")
-                RunInUi(Sub() FrmMain.WindowState = WindowState.Minimized)
+                RunInUi(Sub()
+                            FrmMain.WindowState = WindowState.Minimized
+                            FrmLaunchRight?.RefreshHomepageMediaPlayback()
+                        End Sub)
             Case 5
                 '啥都不干
         End Select

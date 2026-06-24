@@ -1061,6 +1061,9 @@ Public Class FormMain
             End If
         End Set
     End Property
+    Private Sub FormMain_StateChanged(sender As Object, e As EventArgs) Handles Me.StateChanged
+        FrmLaunchRight?.RefreshHomepageMediaPlayback()
+    End Sub
     ''' <summary>
     ''' 把当前窗口拖到最前面。
     ''' </summary>

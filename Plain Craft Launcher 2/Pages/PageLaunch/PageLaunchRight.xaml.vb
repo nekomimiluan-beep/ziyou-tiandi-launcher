@@ -380,10 +380,12 @@ Public Class PageLaunchRight
         If TypeOf Target Is MediaElement Then
             Dim Media = CType(Target, MediaElement)
             If Not HomepageMediaElements.Contains(Media) Then HomepageMediaElements.Add(Media)
+            Media.LoadedBehavior = MediaState.Manual
+            Media.UnloadedBehavior = MediaState.Stop
             AddHandler Media.MediaEnded,
                 Sub()
                     Try
-                        If FrmMain IsNot Nothing AndAlso FrmMain.Hidden Then Return
+                        If ShouldPauseHomepageMedia() Then Return
                         Media.Position = TimeSpan.Zero
                         Media.Play()
                     Catch ex As Exception
@@ -396,14 +398,17 @@ Public Class PageLaunchRight
             SetupHomepageMediaLoop(VisualTreeHelper.GetChild(Target, i))
         Next
     End Sub
+    Private Function ShouldPauseHomepageMedia() As Boolean
+        Return FrmMain Is Nothing OrElse FrmMain.Hidden OrElse FrmMain.WindowState = WindowState.Minimized OrElse FrmMain.Visibility <> Visibility.Visible OrElse Not FrmMain.IsVisible
+    End Function
     Public Sub RefreshHomepageMediaPlayback()
         Try
-            Dim ShouldPause = FrmMain IsNot Nothing AndAlso FrmMain.Hidden
+            Dim ShouldPause = ShouldPauseHomepageMedia()
             For Each MediaItem In HomepageMediaElements.ToList()
                 If MediaItem Is Nothing Then Continue For
                 Try
                     If ShouldPause Then
-                        MediaItem.Pause()
+                        MediaItem.Stop()
                     Else
                         MediaItem.Play()
                     End If
