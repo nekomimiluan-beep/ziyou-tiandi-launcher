@@ -187,14 +187,173 @@ Friend Module ModSecret
 
 #Region "更新"
 
+    Private Const LauncherUpdateManifestUrl As String = "http://zx8673.ziyoutiandi.cn/%E8%87%AA%E7%94%B1%E5%A4%A9%E5%9C%B0%E5%90%AF%E5%8A%A8%E5%99%A8%E6%9B%B4%E6%96%B0/%E8%87%AA%E7%94%B1%E5%A4%A9%E5%9C%B0%E5%90%AF%E5%8A%A8%E5%99%A8%E6%9B%B4%E6%96%B0%E6%B8%85%E5%8D%95.txt"
+    Private ReadOnly LauncherUpdateCachePath As String = PathTemp & "Cache\LauncherUpdate.txt"
+    Private IsLauncherUpdateChecking As Boolean = False
+
+    Private Class LauncherUpdateInfo
+        Public Property VersionCode As Integer
+        Public Property VersionName As String
+        Public Property Url As String
+        Public Property Sha256 As String
+        Public Property Force As Boolean
+        Public Property Notes As String
+    End Class
+
     Friend Sub UpdateCheckByButton()
-        Hint("该版本中不包含更新功能……")
+        If IsLauncherUpdateChecking Then
+            Hint("正在检查启动器更新，请稍候……")
+            Return
+        End If
+        IsLauncherUpdateChecking = True
+        RunInNewThread(
+        Sub()
+            Try
+                Hint("正在检查启动器更新……")
+                Dim Info = LauncherUpdateGetManifest(True)
+                If Info.VersionCode <= VersionCode Then
+                    Hint("当前已是最新版！", HintType.Green)
+                    Return
+                End If
+                If String.IsNullOrWhiteSpace(Info.Url) Then Throw New Exception("更新清单中没有填写新版启动器下载地址。")
+                Dim Message = $"发现启动器新版本：{Info.VersionName}（{Info.VersionCode}）{vbCrLf}" &
+                              $"当前版本：{VersionDisplay}（{VersionCode}）" &
+                              If(String.IsNullOrWhiteSpace(Info.Notes), "", $"{vbCrLf}{vbCrLf}更新说明：{Info.Notes}") &
+                              $"{vbCrLf}{vbCrLf}是否立即下载并更新？"
+                Dim Result = MyMsgBox(Message, "启动器更新", "立即更新", If(Info.Force, "", "取消"), IsWarn:=Info.Force)
+                If Result <> 1 Then Return
+                LauncherUpdateDownloadAndRestart(Info)
+            Catch ex As Exception
+                Logger.Warn(ex, "启动器更新检查失败", LogBehavior.None)
+                MyMsgBox("启动器更新检查失败：" & vbCrLf & ex.GetDisplay(False), "更新失败", IsWarn:=True)
+            Finally
+                IsLauncherUpdateChecking = False
+            End Try
+        End Sub, "Launcher Update", ThreadPriority.BelowNormal)
     End Sub
 
     Friend IsUpdateWaitingRestart As Boolean = False
+    Private LauncherUpdateNewFile As String = Nothing
     Public Sub UpdateRestart(TriggerRestartAndByEnd As Boolean)
+        If String.IsNullOrWhiteSpace(LauncherUpdateNewFile) OrElse Not FileUtils.Exists(LauncherUpdateNewFile) Then Return
+        Try
+            Dim Arguments = $"--update {Process.GetCurrentProcess.Id} ""{PathExe}"" ""{LauncherUpdateNewFile}"" true"
+            StartProcess(New ProcessStartInfo With {.FileName = LauncherUpdateNewFile, .Arguments = Arguments, .UseShellExecute = True, .WorkingDirectory = PathExeFolder})
+            IsUpdateWaitingRestart = False
+            If TriggerRestartAndByEnd Then
+                FrmMain.EndProgram(False)
+            Else
+                Environment.Exit(ProcessReturnValues.TaskDone)
+            End If
+        Catch ex As Exception
+            Logger.Warn(ex, "启动自更新替换进程失败", LogBehavior.None)
+            MyMsgBox("启动自更新替换进程失败：" & vbCrLf & ex.GetDisplay(False), "更新失败", IsWarn:=True)
+        End Try
     End Sub
     Public Sub UpdateReplace(ProcessId As Integer, OldFileName As String, NewFileName As String, TriggerRestart As Boolean)
+        Try
+            Logger.Info($"开始替换启动器：{OldFileName} ← {NewFileName}")
+            Try
+                Dim OldProcess = Process.GetProcessById(ProcessId)
+                If Not OldProcess.HasExited Then OldProcess.WaitForExit(30000)
+            Catch ex As Exception
+                Logger.Warn(ex, "等待旧启动器进程退出失败，继续尝试替换")
+            End Try
+            If Not FileUtils.Exists(NewFileName) Then Throw New FileNotFoundException("新版启动器文件不存在。", NewFileName)
+            DirectoryUtils.Create(PathUtils.RemoveLastPart(OldFileName))
+            Dim BackupFile = OldFileName & ".bak"
+            Try
+                If FileUtils.Exists(OldFileName) Then FileUtils.Copy(OldFileName, BackupFile)
+            Catch ex As Exception
+                Logger.Warn(ex, "备份旧启动器失败，继续尝试替换")
+            End Try
+            FileUtils.Copy(NewFileName, OldFileName)
+            Try
+                FileUtils.Delete(NewFileName)
+                FileUtils.Delete(BackupFile)
+            Catch ex As Exception
+                Logger.Warn(ex, "清理启动器更新临时文件失败")
+            End Try
+            If TriggerRestart Then StartProcess(New ProcessStartInfo With {.FileName = OldFileName, .UseShellExecute = True, .WorkingDirectory = PathUtils.RemoveLastPart(OldFileName)})
+        Catch ex As Exception
+            Logger.Warn(ex, "替换启动器失败", LogBehavior.None)
+            MsgBox("替换启动器失败：" & vbCrLf & ex.GetDisplay(False), MsgBoxStyle.Critical, "更新失败")
+        End Try
+    End Sub
+
+    Public Function LauncherUpdateIsNewest() As Boolean?
+        Try
+            Dim Raw = FileUtils.TryReadAsString(LauncherUpdateCachePath, Encoding.UTF8)
+            If String.IsNullOrWhiteSpace(Raw) Then Return Nothing
+            Return LauncherUpdateParseManifest(Raw).VersionCode <= VersionCode
+        Catch ex As Exception
+            Logger.Warn(ex, "确认启动器更新缓存失败")
+            Return Nothing
+        End Try
+    End Function
+
+    Private Function LauncherUpdateGetManifest(ShowLog As Boolean) As LauncherUpdateInfo
+        Dim Raw = NetRequestByClientRetry(LauncherUpdateManifestUrl, Encoding:=Encoding.UTF8)
+        FileUtils.Write(LauncherUpdateCachePath, Raw, Encoding.UTF8)
+        Dim Info = LauncherUpdateParseManifest(Raw)
+        If ShowLog Then Logger.Info($"启动器更新清单：{Info.VersionName} ({Info.VersionCode})")
+        Return Info
+    End Function
+
+    Private Function LauncherUpdateParseManifest(Raw As String) As LauncherUpdateInfo
+        If String.IsNullOrWhiteSpace(Raw) Then Throw New Exception("更新清单为空。")
+        Dim Values As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
+        For Each Line In Raw.Replace(vbCrLf, vbLf).Replace(vbCr, vbLf).Split(vbLf)
+            Dim Trimmed = Line.Trim()
+            If Trimmed = "" OrElse Trimmed.StartsWith("#") Then Continue For
+            Dim EqualIndex = Trimmed.IndexOf("="c)
+            If EqualIndex < 0 Then Continue For
+            Values(Trimmed.Substring(0, EqualIndex).Trim()) = Trimmed.Substring(EqualIndex + 1).Trim()
+        Next
+        Dim CodeText As String = Nothing
+        Dim Code As Integer
+        If Not Values.TryGetValue("versionCode", CodeText) OrElse Not Integer.TryParse(CodeText, Code) Then Throw New Exception("更新清单中的 versionCode 无效。")
+        If Code < 0 Then Throw New Exception("更新清单中的 versionCode 不能小于 0。")
+        Dim Info As New LauncherUpdateInfo With {
+            .VersionCode = Code,
+            .VersionName = If(Values.ContainsKey("versionName"), Values("versionName"), ""),
+            .Url = If(Values.ContainsKey("url"), Values("url"), ""),
+            .Sha256 = If(Values.ContainsKey("sha256"), Values("sha256"), ""),
+            .Notes = If(Values.ContainsKey("notes"), Values("notes"), "")
+        }
+        If String.IsNullOrWhiteSpace(Info.VersionName) Then Info.VersionName = "自由天地启动器 " & Code
+        If Values.ContainsKey("force") Then
+            Dim ForceUpdate As Boolean
+            If Boolean.TryParse(Values("force"), ForceUpdate) Then Info.Force = ForceUpdate
+        End If
+        If Info.VersionCode > VersionCode Then
+            If String.IsNullOrWhiteSpace(Info.Url) Then Throw New Exception("更新清单中缺少 url。")
+            If Not Info.Url.StartsWithF("http://", True) AndAlso Not Info.Url.StartsWithF("https://", True) Then Throw New Exception("更新清单中的 url 必须以 http:// 或 https:// 开头。")
+            If Info.Sha256 <> "" AndAlso Not Info.Sha256.RegexCheck("^[0-9a-fA-F]{64}$") Then Throw New Exception("更新清单中的 sha256 格式无效。")
+        End If
+        Return Info
+    End Function
+
+    Private Sub LauncherUpdateDownloadAndRestart(Info As LauncherUpdateInfo)
+        Dim UpdateFolder = PathTemp & "LauncherUpdate\"
+        Dim NewFile = UpdateFolder & "自由天地启动器.new.exe"
+        Try
+            DirectoryUtils.Delete(UpdateFolder)
+        Catch ex As Exception
+            Logger.Warn(ex, "清理旧启动器更新缓存失败")
+        End Try
+        DirectoryUtils.Create(UpdateFolder)
+        Hint("正在下载启动器更新……")
+        NetDownloadByLoader(Info.Url, NewFile, SimulateBrowserHeaders:=True)
+        If Not FileUtils.Exists(NewFile) Then Throw New Exception("新版启动器下载失败，未找到下载文件。")
+        If Not String.IsNullOrWhiteSpace(Info.Sha256) Then
+            Dim ActualHash = CryptographyUtils.ComputeFileHash(NewFile, CryptographyUtils.HashMethod.Sha256)
+            If Not ActualHash.Equals(Info.Sha256, StringComparison.OrdinalIgnoreCase) Then Throw New Exception($"新版启动器 SHA256 不匹配。{vbCrLf}应为：{Info.Sha256}{vbCrLf}实际：{ActualHash}")
+        End If
+        LauncherUpdateNewFile = NewFile
+        IsUpdateWaitingRestart = True
+        Hint("启动器更新下载完成，正在重启并替换……", HintType.Green)
+        UpdateRestart(True)
     End Sub
 
     ''' <summary>
@@ -215,7 +374,14 @@ Friend Module ModSecret
     ''' </summary>
     Public ServerConfig As JObject
 
-    Public ServerLoader As New LoaderTask(Of Integer, Integer)("PCL 配置更新", Sub() Logger.Info("该版本中不包含更新通知功能……"), Priority:=ThreadPriority.BelowNormal) With
+    Public ServerLoader As New LoaderTask(Of Integer, Integer)("PCL 配置更新",
+    Sub()
+        Try
+            LauncherUpdateGetManifest(False)
+        Catch ex As Exception
+            Logger.Warn(ex, "后台刷新启动器更新清单失败")
+        End Try
+    End Sub, Priority:=ThreadPriority.BelowNormal) With
         {.ReloadTimeout = 1000 * 60 * 60} '超时 1 小时
 
 #End Region
