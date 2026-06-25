@@ -1647,7 +1647,10 @@ NextInstance:
                 TargetSize = Result
                 TargetSize.Height -= 29.5 * DPI / 96 '标题栏高度
             Case 3 '自定义
-                TargetSize = New Size(Math.Max(100, Settings.Get(Of Integer)("LaunchArgumentWindowWidth")), Math.Max(100, Settings.Get(Of Integer)("LaunchArgumentWindowHeight")))
+                TargetSize = New Size(
+                    GetPixelSize(Math.Max(100, Settings.Get(Of Integer)("LaunchArgumentWindowWidth"))),
+                    GetPixelSize(Math.Max(100, Settings.Get(Of Integer)("LaunchArgumentWindowHeight"))))
+                McLaunchLog($"已按当前 DPI 转换自定义窗口大小：{Settings.Get(Of Integer)("LaunchArgumentWindowWidth")} x {Settings.Get(Of Integer)("LaunchArgumentWindowHeight")} → {Math.Round(TargetSize.Width)} x {Math.Round(TargetSize.Height)}")
             Case Else
                 TargetSize = New Size(854, 480)
         End Select
