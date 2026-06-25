@@ -259,9 +259,9 @@ Friend Module ModSecret
             Logger.Info($"开始替换启动器：{OldFileName} ← {NewFileName}")
             Try
                 Dim OldProcess = Process.GetProcessById(ProcessId)
-                If Not OldProcess.HasExited Then OldProcess.WaitForExit(30000)
+                If Not OldProcess.HasExited AndAlso Not OldProcess.WaitForExit(120000) Then Throw New TimeoutException("旧启动器进程未能在 120 秒内退出。")
             Catch ex As Exception
-                Logger.Warn(ex, "等待旧启动器进程退出失败，继续尝试替换")
+                Throw New Exception("等待旧启动器进程退出失败，已取消替换。", ex)
             End Try
             If Not FileUtils.Exists(NewFileName) Then Throw New FileNotFoundException("新版启动器文件不存在。", NewFileName)
             DirectoryUtils.Create(PathUtils.RemoveLastPart(OldFileName))
@@ -354,10 +354,23 @@ Friend Module ModSecret
             Dim ActualHash = CryptographyUtils.ComputeFileHash(NewFile, CryptographyUtils.HashMethod.Sha256)
             If Not ActualHash.Equals(Info.Sha256, StringComparison.OrdinalIgnoreCase) Then Throw New Exception($"新版启动器 SHA256 不匹配。{vbCrLf}应为：{Info.Sha256}{vbCrLf}实际：{ActualHash}")
         End If
+        LauncherUpdateValidateNewFile(NewFile, Info)
         LauncherUpdateNewFile = NewFile
         IsUpdateWaitingRestart = True
         Hint("启动器更新下载完成，正在重启并替换……", HintType.Green)
         UpdateRestart(True)
+    End Sub
+
+    Private Sub LauncherUpdateValidateNewFile(NewFile As String, Info As LauncherUpdateInfo)
+        Dim TestProcess = StartProcess(New ProcessStartInfo With {.FileName = NewFile, .Arguments = "--version-code", .UseShellExecute = True, .WorkingDirectory = PathUtils.RemoveLastPart(NewFile)})
+        If Not TestProcess.WaitForExit(15000) Then
+            Try
+                TestProcess.Kill()
+            Catch
+            End Try
+            Throw New Exception("新版启动器版本校验超时。")
+        End If
+        If TestProcess.ExitCode <> Info.VersionCode Then Throw New Exception($"新版启动器内部版本码与更新清单不一致。{vbCrLf}清单版本码：{Info.VersionCode}{vbCrLf}新版启动器版本码：{TestProcess.ExitCode}{vbCrLf}请确认已在源码中同步修改 VersionCode，并重新上传正确的 exe。")
     End Sub
 
     ''' <summary>

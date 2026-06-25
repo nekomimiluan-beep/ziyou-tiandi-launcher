@@ -9,6 +9,10 @@ Public Class Application
         Try
             '提升主线程优先级
             Thread.CurrentThread.Priority = ThreadPriority.Highest
+            '用于启动器自更新校验下载到的新 exe 是否真的是目标版本
+            If e.Args.Length > 0 AndAlso e.Args(0) = "--version-code" Then
+                Environment.Exit(VersionCode)
+            End If
             '执行开发版测试
             If BuildType = BuildTypes.Debug Then
                 Try
