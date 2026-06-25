@@ -1540,14 +1540,14 @@ NextInstance:
             End If
         End If
 
+        '窗口大小
+        Arg &= " --height ${resolution_height} --width ${resolution_width}" '总是添加宽高选项，之后去重的时候会覆盖 MC 自带的
+
         '设置里自定义的参数
         Dim CustomArg As String = Settings.Get(Of String)("VersionAdvanceGame", Instance:=McInstanceSelected)
         If CustomArg = "" Then CustomArg = Settings.Get(Of String)("LaunchAdvanceGame")
         If CustomArg <> "" Then CustomArg = ArgumentReplace(CustomArg)
         Arg &= " " & CustomArg
-
-        '窗口大小
-        Arg &= " --height ${resolution_height} --width ${resolution_width}" '总是添加宽高选项，之后去重的时候会覆盖 MC 自带的
 
         '把 OptiFineForgeTweaker 放在参数的末尾
         If (McInstanceSelected.Version.HasForge OrElse McInstanceSelected.Version.HasLiteLoader) AndAlso McInstanceSelected.Version.HasOptiFine Then
