@@ -201,18 +201,22 @@ Friend Module ModSecret
     End Class
 
     Friend Sub UpdateCheckByButton()
+        LauncherUpdateCheckAsync(False)
+    End Sub
+
+    Private Sub LauncherUpdateCheckAsync(IsStartupCheck As Boolean)
         If IsLauncherUpdateChecking Then
-            Hint("正在检查启动器更新，请稍候……")
+            If Not IsStartupCheck Then Hint("正在检查启动器更新，请稍候……")
             Return
         End If
         IsLauncherUpdateChecking = True
         RunInNewThread(
         Sub()
             Try
-                Hint("正在检查启动器更新……")
+                If Not IsStartupCheck Then Hint("正在检查启动器更新……")
                 Dim Info = LauncherUpdateGetManifest(True)
                 If Info.VersionCode <= VersionCode Then
-                    Hint("当前已是最新版！", HintType.Green)
+                    If Not IsStartupCheck Then Hint("当前已是最新版！", HintType.Green)
                     Return
                 End If
                 If String.IsNullOrWhiteSpace(Info.Url) Then Throw New Exception("更新清单中没有填写新版启动器下载地址。")
@@ -225,7 +229,7 @@ Friend Module ModSecret
                 LauncherUpdateDownloadAndRestart(Info)
             Catch ex As Exception
                 Logger.Warn(ex, "启动器更新检查失败", LogBehavior.None)
-                MyMsgBox("启动器更新检查失败：" & vbCrLf & ex.GetDisplay(False), "更新失败", IsWarn:=True)
+                If Not IsStartupCheck Then MyMsgBox("启动器更新检查失败：" & vbCrLf & ex.GetDisplay(False), "更新失败", IsWarn:=True)
             Finally
                 IsLauncherUpdateChecking = False
             End Try
@@ -376,11 +380,7 @@ Friend Module ModSecret
 
     Public ServerLoader As New LoaderTask(Of Integer, Integer)("PCL 配置更新",
     Sub()
-        Try
-            LauncherUpdateGetManifest(False)
-        Catch ex As Exception
-            Logger.Warn(ex, "后台刷新启动器更新清单失败")
-        End Try
+        LauncherUpdateCheckAsync(True)
     End Sub, Priority:=ThreadPriority.BelowNormal) With
         {.ReloadTimeout = 1000 * 60 * 60} '超时 1 小时
 
