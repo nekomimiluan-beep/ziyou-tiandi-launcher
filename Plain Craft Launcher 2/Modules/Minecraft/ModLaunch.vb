@@ -1507,7 +1507,6 @@ NextInstance:
         If McInstanceSelected.JsonObject("minecraftArguments")?.ToString.Any Then
             Dim BasicString As String = McInstanceSelected.JsonObject("minecraftArguments").ToString
             McLaunchLog($"旧版游戏参数：" & BasicString)
-            BasicString += " --height ${resolution_height} --width ${resolution_width}" '总是添加宽高选项，之后去重的时候会覆盖 MC 自带的
             Arg &= " " & BasicString
         End If
         '新版 MC：从版本 JSON 获取参数
@@ -1546,6 +1545,9 @@ NextInstance:
         If CustomArg = "" Then CustomArg = Settings.Get(Of String)("LaunchAdvanceGame")
         If CustomArg <> "" Then CustomArg = ArgumentReplace(CustomArg)
         Arg &= " " & CustomArg
+
+        '窗口大小
+        Arg &= " --height ${resolution_height} --width ${resolution_width}" '总是添加宽高选项，之后去重的时候会覆盖 MC 自带的
 
         '把 OptiFineForgeTweaker 放在参数的末尾
         If (McInstanceSelected.Version.HasForge OrElse McInstanceSelected.Version.HasLiteLoader) AndAlso McInstanceSelected.Version.HasOptiFine Then
