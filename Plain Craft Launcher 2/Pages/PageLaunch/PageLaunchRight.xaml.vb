@@ -128,6 +128,7 @@ Public Class PageLaunchRight
         Content = ReplaceRemoteHomepagePage(Content)
         Content = ReplaceRemoteHomepageFragments(Content)
         Content = ReplaceServerUpdateHomepageArguments(Content)
+        Content = ZiyouTiandiReplaceOptionalModHomepageButtons(Content)
         '同步到 UI
         RunInUi(Sub() LoadContent(Content))
     End Sub

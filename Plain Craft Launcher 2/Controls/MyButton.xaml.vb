@@ -47,6 +47,7 @@ Public Class MyButton
         Normal = 0
         Highlight = 1
         Red = 2
+        Green = 3
     End Enum
     '属性穿透
     Public Shared Shadows ReadOnly PaddingProperty As DependencyProperty = DependencyProperty.Register("Padding", GetType(Thickness), GetType(MyButton), New PropertyMetadata(New PropertyChangedCallback(
@@ -101,6 +102,14 @@ Public Class MyButton
                                 '红色
                                 AniStart({AaColor(PanFore, Border.BorderBrushProperty, "ColorBrushRedDark", AnimationColorOut)}, "MyButton Color " & Uuid)
                             End If
+                        Case ColorState.Green
+                            If IsMouseOver Then
+                                '绿色指向
+                                AniStart({AaColor(PanFore, Border.BorderBrushProperty, "ColorBrushGreenLight", AnimationColorIn)}, "MyButton Color " & Uuid)
+                            Else
+                                '绿色
+                                AniStart({AaColor(PanFore, Border.BorderBrushProperty, "ColorBrushGreenDark", AnimationColorOut)}, "MyButton Color " & Uuid)
+                            End If
                     End Select
                 Else
                     '不可用（Gray 4）
@@ -128,6 +137,12 @@ Public Class MyButton
                                 PanFore.SetResourceReference(Border.BorderBrushProperty, "ColorBrushRedLight")
                             Else
                                 PanFore.SetResourceReference(Border.BorderBrushProperty, "ColorBrushRedDark")
+                            End If
+                        Case ColorState.Green
+                            If IsMouseOver Then
+                                PanFore.SetResourceReference(Border.BorderBrushProperty, "ColorBrushGreenLight")
+                            Else
+                                PanFore.SetResourceReference(Border.BorderBrushProperty, "ColorBrushGreenDark")
                             End If
                     End Select
                 Else
@@ -157,7 +172,7 @@ Public Class MyButton
                  }, "MyButton Scale " & Uuid)
     End Sub
     Private Sub Button_MouseEnter() Handles Me.MouseEnter
-        AniStart(AaColor(PanFore, BackgroundProperty, If(_ColorType = ColorState.Red, "ColorBrushRedBack", "ColorBrush7"), AnimationColorIn), "MyButton Background " & Uuid)
+        AniStart(AaColor(PanFore, BackgroundProperty, If(_ColorType = ColorState.Red, "ColorBrushRedBack", If(_ColorType = ColorState.Green, "ColorBrushGreenBack", "ColorBrush7")), AnimationColorIn), "MyButton Background " & Uuid)
     End Sub
     Private Sub Button_MouseUp() Handles Me.MouseLeftButtonUp
         If Not IsMouseDown Then Return
