@@ -96,7 +96,7 @@ Public Module ModZiyouTiandiOptionalMods
         Dim ButtonsXaml = BuildOptionalModButtonsXaml()
         Dim Pattern = "(?<buttons><StackPanel\s+Orientation=""Horizontal""\s+HorizontalAlignment=""Right""\s*>[\s\S]*?Text=""点击加群""[\s\S]*?Text=""打开官网""[\s\S]*?</StackPanel>)"
         Dim Result = Regex.Replace(Content, Pattern,
-            Function(Match) "<StackPanel HorizontalAlignment=""Right"">" & vbCrLf & ButtonsXaml & vbCrLf & Match.Groups("buttons").Value & vbCrLf & "</StackPanel>",
+            Function(Match) "<StackPanel HorizontalAlignment=""Right"" Margin=""0,-72,0,0"">" & vbCrLf & ButtonsXaml & vbCrLf & Match.Groups("buttons").Value & vbCrLf & "</StackPanel>",
             RegexOptions.IgnoreCase)
         Return Result
     End Function
@@ -110,7 +110,7 @@ Public Module ModZiyouTiandiOptionalMods
     End Function
 
     Private Function BuildOptionalModButtonsXaml() As String
-        Return "    <StackPanel Orientation=""Horizontal"" HorizontalAlignment=""Right"" Margin=""0,0,0,12"">" & vbCrLf &
+        Return "    <StackPanel Orientation=""Horizontal"" HorizontalAlignment=""Right"" Margin=""0,0,0,8"">" & vbCrLf &
                "        <local:MyButton Width=""135"" Height=""38"" Margin=""0,0,12,0"" Padding=""12,0""" & vbCrLf &
                "                        ColorType=""" & OptionalModStateColor("shader") & """" & vbCrLf &
                "                        Text=""" & EscapeUtils.XmlEscape(OptionalModStateText("shader")) & """" & vbCrLf &
