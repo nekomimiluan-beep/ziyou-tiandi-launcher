@@ -104,7 +104,7 @@ Public Module ModZiyouTiandiOptionalMods
         Dim ButtonsXaml = BuildOptionalModButtonsXaml()
         Dim Pattern = "(?<buttons><StackPanel\s+Orientation=""Horizontal""\s+HorizontalAlignment=""Right""\s*>[\s\S]*?Text=""点击加群""[\s\S]*?Text=""打开官网""[\s\S]*?</StackPanel>)"
         Dim Result = Regex.Replace(Content, Pattern,
-            Function(Match) "<StackPanel HorizontalAlignment=""Right"" Margin=""0,-72,0,0"">" & vbCrLf & ButtonsXaml & vbCrLf & Match.Groups("buttons").Value & vbCrLf & "</StackPanel>",
+            Function(Match) ButtonsXaml,
             RegexOptions.IgnoreCase)
         Return Result
     End Function
@@ -120,26 +120,50 @@ Public Module ModZiyouTiandiOptionalMods
     End Function
 
     Private Function BuildOptionalModButtonsXaml() As String
-        Return "    <StackPanel Orientation=""Horizontal"" HorizontalAlignment=""Right"" Margin=""0,0,0,8"">" & vbCrLf &
-               "        <local:MyButton Width=""120"" Height=""38"" Margin=""0,0,10,0"" Padding=""10,0""" & vbCrLf &
+        Return "<Grid HorizontalAlignment=""Right"" Margin=""0,-72,0,0"">" & vbCrLf &
+               "    <Grid.RowDefinitions>" & vbCrLf &
+               "        <RowDefinition Height=""38"" />" & vbCrLf &
+               "        <RowDefinition Height=""8"" />" & vbCrLf &
+               "        <RowDefinition Height=""38"" />" & vbCrLf &
+               "    </Grid.RowDefinitions>" & vbCrLf &
+               "    <Grid.ColumnDefinitions>" & vbCrLf &
+               "        <ColumnDefinition Width=""120"" />" & vbCrLf &
+               "        <ColumnDefinition Width=""10"" />" & vbCrLf &
+               "        <ColumnDefinition Width=""120"" />" & vbCrLf &
+               "        <ColumnDefinition Width=""10"" />" & vbCrLf &
+               "        <ColumnDefinition Width=""120"" />" & vbCrLf &
+               "    </Grid.ColumnDefinitions>" & vbCrLf &
+               "    <local:MyButton Grid.Row=""0"" Grid.Column=""0"" Width=""120"" Height=""38"" Padding=""10,0""" & vbCrLf &
                "                        ColorType=""" & OptionalModStateColor("vr") & """" & vbCrLf &
                "                        Text=""" & EscapeUtils.XmlEscape(OptionalModStateText("vr")) & """" & vbCrLf &
                "                        EventType=""切换自由天地Mod""" & vbCrLf &
                "                        EventData=""vr""" & vbCrLf &
                "                        ToolTip=""切换 VR 支持 MOD 状态"" />" & vbCrLf &
-               "        <local:MyButton Width=""120"" Height=""38"" Margin=""0,0,10,0"" Padding=""10,0""" & vbCrLf &
+               "    <local:MyButton Grid.Row=""0"" Grid.Column=""2"" Width=""120"" Height=""38"" Padding=""10,0""" & vbCrLf &
                "                        ColorType=""" & OptionalModStateColor("shader") & """" & vbCrLf &
                "                        Text=""" & EscapeUtils.XmlEscape(OptionalModStateText("shader")) & """" & vbCrLf &
                "                        EventType=""切换自由天地Mod""" & vbCrLf &
                "                        EventData=""shader""" & vbCrLf &
                "                        ToolTip=""切换光影 MOD 状态"" />" & vbCrLf &
-               "        <local:MyButton Width=""120"" Height=""38"" Padding=""10,0""" & vbCrLf &
+               "    <local:MyButton Grid.Row=""0"" Grid.Column=""4"" Width=""120"" Height=""38"" Padding=""10,0""" & vbCrLf &
                "                        ColorType=""" & OptionalModStateColor("horizon") & """" & vbCrLf &
                "                        Text=""" & EscapeUtils.XmlEscape(OptionalModStateText("horizon")) & """" & vbCrLf &
                "                        EventType=""切换自由天地Mod""" & vbCrLf &
                "                        EventData=""horizon""" & vbCrLf &
                "                        ToolTip=""切换地平线 MOD 状态"" />" & vbCrLf &
-               "    </StackPanel>"
+               "    <local:MyButton Grid.Row=""2"" Grid.Column=""2"" Width=""120"" Height=""38"" Padding=""10,0""" & vbCrLf &
+               "                        ColorType=""Highlight""" & vbCrLf &
+               "                        Text=""点击加群""" & vbCrLf &
+               "                        EventType=""打开网页""" & vbCrLf &
+               "                        EventData=""https://qm.qq.com/q/KEQDuNaiek""" & vbCrLf &
+               "                        ToolTip=""打开 QQ 加群链接"" />" & vbCrLf &
+               "    <local:MyButton Grid.Row=""2"" Grid.Column=""4"" Width=""120"" Height=""38"" Padding=""10,0""" & vbCrLf &
+               "                        ColorType=""Highlight""" & vbCrLf &
+               "                        Text=""打开官网""" & vbCrLf &
+               "                        EventType=""打开网页""" & vbCrLf &
+               "                        EventData=""https://www.mcziyou.com""" & vbCrLf &
+               "                        ToolTip=""打开 www.mcziyou.com"" />" & vbCrLf &
+               "</Grid>"
     End Function
 
     Public Sub ZiyouTiandiToggleOptionalMod(Key As String)
