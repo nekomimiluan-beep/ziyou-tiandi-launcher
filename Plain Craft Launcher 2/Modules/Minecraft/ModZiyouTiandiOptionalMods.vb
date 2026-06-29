@@ -4,6 +4,7 @@ Public Module ModZiyouTiandiOptionalMods
 
     Private Const ShaderModFileName As String = "[美化类-Iris光影]iris-neoforge-1.8.14-beta.1+mc1.21.1.jar"
     Private Const HorizonModFileName As String = "[美化类-遥远的地平线]DistantHorizons-3.1.2-b-1.21.1-fabric-neoforge.jar"
+    Private Const VrModFileName As String = "[内容类-VivecraftVR]vivecraft-1.21.1-1.3.13-neoforge.jar"
     Private Const ShaderDefaultDisabledFlag As String = "ShaderModDefaultDisabled.flag"
     Private Const HorizonDefaultEnabledFlag As String = "HorizonModDefaultEnabled.flag"
 
@@ -29,6 +30,13 @@ Public Module ModZiyouTiandiOptionalMods
                     .DisplayName = "地平线MOD",
                     .FileName = HorizonModFileName,
                     .EnableWarning = "地平线MOD是一款很吃显卡的MOD，开启后可能会导致显卡占用极速增加导致复杂场景卡顿，是否开启？"
+                }
+            Case "vr", "vivecraft", "虚拟现实"
+                Return New OptionalModEntry With {
+                    .Key = "vr",
+                    .DisplayName = "VR支持",
+                    .FileName = VrModFileName,
+                    .EnableWarning = "开启 VR 支持需要连接对应设备，并可能影响普通模式兼容性，是否开启？"
                 }
             Case Else
                 Throw New ArgumentException("未知的自由天地 MOD 类型：" & Key)
@@ -103,6 +111,8 @@ Public Module ModZiyouTiandiOptionalMods
 
     Private Function ReplaceOptionalModPlaceholders(Content As String) As String
         Return Content.
+            Replace("{vr_mod_text}", EscapeUtils.XmlEscape(OptionalModStateText("vr"))).
+            Replace("{vr_mod_color}", OptionalModStateColor("vr")).
             Replace("{shader_mod_text}", EscapeUtils.XmlEscape(OptionalModStateText("shader"))).
             Replace("{shader_mod_color}", OptionalModStateColor("shader")).
             Replace("{horizon_mod_text}", EscapeUtils.XmlEscape(OptionalModStateText("horizon"))).
@@ -111,13 +121,19 @@ Public Module ModZiyouTiandiOptionalMods
 
     Private Function BuildOptionalModButtonsXaml() As String
         Return "    <StackPanel Orientation=""Horizontal"" HorizontalAlignment=""Right"" Margin=""0,0,0,8"">" & vbCrLf &
-               "        <local:MyButton Width=""135"" Height=""38"" Margin=""0,0,12,0"" Padding=""12,0""" & vbCrLf &
+               "        <local:MyButton Width=""120"" Height=""38"" Margin=""0,0,10,0"" Padding=""10,0""" & vbCrLf &
+               "                        ColorType=""" & OptionalModStateColor("vr") & """" & vbCrLf &
+               "                        Text=""" & EscapeUtils.XmlEscape(OptionalModStateText("vr")) & """" & vbCrLf &
+               "                        EventType=""切换自由天地Mod""" & vbCrLf &
+               "                        EventData=""vr""" & vbCrLf &
+               "                        ToolTip=""切换 VR 支持 MOD 状态"" />" & vbCrLf &
+               "        <local:MyButton Width=""120"" Height=""38"" Margin=""0,0,10,0"" Padding=""10,0""" & vbCrLf &
                "                        ColorType=""" & OptionalModStateColor("shader") & """" & vbCrLf &
                "                        Text=""" & EscapeUtils.XmlEscape(OptionalModStateText("shader")) & """" & vbCrLf &
                "                        EventType=""切换自由天地Mod""" & vbCrLf &
                "                        EventData=""shader""" & vbCrLf &
                "                        ToolTip=""切换光影 MOD 状态"" />" & vbCrLf &
-               "        <local:MyButton Width=""135"" Height=""38"" Padding=""12,0""" & vbCrLf &
+               "        <local:MyButton Width=""120"" Height=""38"" Padding=""10,0""" & vbCrLf &
                "                        ColorType=""" & OptionalModStateColor("horizon") & """" & vbCrLf &
                "                        Text=""" & EscapeUtils.XmlEscape(OptionalModStateText("horizon")) & """" & vbCrLf &
                "                        EventType=""切换自由天地Mod""" & vbCrLf &
@@ -168,16 +184,13 @@ Public Module ModZiyouTiandiOptionalMods
 
         If FileUtils.Exists(TargetPath) Then
             If FileUtils.Exists(SourcePath) Then
-                If CryptographyUtils.ComputeFileHash(SourcePath) <> CryptographyUtils.ComputeFileHash(TargetPath) Then
-                    Throw New Exception($"目前同时存在启用和禁用的两个 MOD 文件：{vbCrLf} - {PathUtils.GetLastPart(TargetPath)}{vbCrLf} - {PathUtils.GetLastPart(SourcePath)}{vbCrLf}{vbCrLf}注意，这两个文件的内容并不相同。{vbCrLf}在手动删除或重命名其中一个文件后，才能继续操作。")
-                End If
+                FileUtils.Delete(TargetPath)
             Else
                 Logger.Warn("自由天地 MOD 状态已被切换：" & Entry.DisplayName)
                 Return
             End If
         End If
 
-        FileUtils.Delete(TargetPath)
         FileUtils.Move(SourcePath, TargetPath)
         Logger.Info($"已切换自由天地 MOD 状态：{Entry.DisplayName}，{SourcePath} -> {TargetPath}")
     End Sub
